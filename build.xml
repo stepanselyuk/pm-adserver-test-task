@@ -1,0 +1,424 @@
+<project name="AdServer">
+
+	<condition property="script-suffix" value=".bat" else="">
+	  <os family="windows" />
+	</condition>
+
+    <property name="bin_dir" value="${basedir}/bin" />
+    <property name="app_dir" value="${basedir}/app" />
+    <property name="var_dir" value="${basedir}/var" />
+    <property name="source_dir" value="${basedir}/src" />
+    <property name="tests_dir" value="${basedir}/tests" />
+    <property name="build_dir" value="${basedir}/build" />
+
+    <property name="console_bin" value="${bin_dir}/console" />
+    <property name="console_prod_args" value="--env=prod --no-debug" />
+    <property name="console_test_args" value="--env=test" />
+
+    <property name="phpunit_bin" value="${bin_dir}/phpunit${script-suffix}" />
+    <property name="bower_components_dir" value="${source_dir}/AppBundle/Resources/public/bower_components" />
+
+    <target name="check-bins">
+        <available file="${bin_dir}/composer" property="composer.found"/>
+        <available file="${basedir}/vendor/maxmind/geoip/data/GeoLiteCity.dat" property="geoipdb.found"/>
+    </target>
+
+    <!-- COMPOSER -->
+
+    <target name="composer-download" description="Download composer from www.getcomposer.org" depends="check-bins" unless="composer.found">
+        <exec executable="bash">
+            <arg value="-c" />
+            <arg value="curl -sS https://getcomposer.org/installer | php -- --install-dir=${bin_dir} --filename=composer" />
+        </exec>
+    </target>
+
+    <target name="composer-upgrade" description="Upgrade composer" depends="check-bins" if="composer.found">
+        <exec executable="${bin_dir}/composer" failonerror="true">
+            <arg line="self-update" />
+        </exec>
+    </target>
+
+    <target name="composer-install" description="Install all vendor dependencies from composer" depends="composer-download, composer-upgrade">
+        <exec executable="${bin_dir}/composer" failonerror="true">
+            <arg line="install --optimize-autoloader" />
+        </exec>
+        <!-- needed because maxmind/geoip can be updated and we need to download DB again -->
+        <antcall target="download-geoip-if-not-exists" />
+    </target>
+
+    <target name="composer-install-prod" description="Install all vendor dependencies from composer (production mode)" depends="composer-download, composer-upgrade">
+        <exec executable="${bin_dir}/composer" failonerror="true">
+            <arg line="install --prefer-dist --no-dev --optimize-autoloader" />
+        </exec>
+        <!-- needed because maxmind/geoip can be updated and we need to download DB again -->
+        <antcall target="download-geoip-if-not-exists" />
+    </target>
+
+    <target name="composer-update" description="Update all vendor dependencies from composer in the newest versions" depends="composer-download">
+        <exec executable="${bin_dir}/composer" failonerror="true">
+            <arg line="update" />
+        </exec>
+        <!-- needed because maxmind/geoip can be updated and we need to download DB again -->
+        <antcall target="download-geoip-if-not-exists" />
+    </target>
+
+    <!-- /COMPOSER -->
+
+    <!-- DOWNLOADS -->
+
+    <target name="download-geoip-if-not-exists" depends="check-bins" unless="geoipdb.found"  description="Download Maxmind GeoIp Library if not exists.">
+        <antcall target="download-geoip" />
+    </target>
+
+    <target name="download-geoip" description="Download Maxmind GeoIp Library">
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="maxmind:geoip:update-data http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz" />
+        </exec>
+    </target>
+
+    <!-- /DOWNLOADS -->
+
+    <!-- DEVELOPER ENVIRONMENT BUILD -->
+
+    <target name="clean" description="Cleanup build artifacts">
+        <delete dir="${build_dir}/coverage" />
+        <delete dir="${build_dir}/code-browser" />
+        <delete dir="${build_dir}/logs" />
+    </target>
+
+    <target name="prepare-build" depends="clean" description="Prepare for build">
+        <mkdir dir="${build_dir}/coverage"/>
+        <mkdir dir="${build_dir}/code-browser"/>
+        <mkdir dir="${build_dir}/logs"/>
+    </target>
+
+    <target name="remove-phpcs-cache-file" description="Remove phpcs cache file">
+        <delete file="${basedir}/.php_cs.cache"/>
+    </target>
+
+    <target name="cs-fixer" description="Fix coding standards using PHP CS Fixer.">
+        <!--<antcall target="remove-phpcs-cache-file" />-->
+        <exec executable="${bin_dir}/php-cs-fixer${script-suffix}" failonerror="true">
+            <arg value="fix" />
+            <arg value="--verbose" />
+            <!--<arg value="&#45;&#45;dry-run" />-->
+            <arg value="--diff" />
+            <arg value="--config-file=${build_dir}/.php_cs" />
+        </exec>
+    </target>
+
+    <target name="phpcs" description="Find coding standard violations using PHP_CodeSniffer and print result in text format.">
+        <exec executable="${bin_dir}/phpcs${script-suffix}" failonerror="true">
+            <arg value="-p" />
+            <arg value="--standard=${build_dir}/phpcs.xml" />
+            <arg value="--extensions=php" />
+            <arg value="--encoding=utf-8" />
+            <arg value="--ignore=${bower_components_dir}" />
+            <arg path="${source_dir}" />
+            <arg path="${tests_dir}" />
+        </exec>
+    </target>
+
+    <target name="phpcbf" description="Find coding standard violations using PHP_CodeSniffer and fixes it automatically.">
+        <exec executable="${bin_dir}/phpcbf${script-suffix}" failonerror="false">
+            <arg value="--standard=${build_dir}/phpcs.xml" />
+            <arg value="--extensions=php" />
+            <arg value="--encoding=utf-8" />
+            <arg value="--ignore=${bower_components_dir}" />
+            <arg path="${source_dir}" />
+            <arg path="${tests_dir}" />
+        </exec>
+    </target>
+
+    <target name="phpmd" description="Perform project mess detection using PHPMD and print result in text format.">
+        <exec executable="${bin_dir}/phpmd${script-suffix}" failonerror="true">
+            <arg path="${source_dir},${tests_dir}" />
+            <arg value="text" />
+            <arg value="${build_dir}/phpmd.xml" />
+            <arg line="--exclude ${bower_components_dir}" />
+        </exec>
+    </target>
+
+    <target name="phpcb" description="Generates a browsable representation of PHP code where sections with violations found by quality assurance tools such as PHP_CodeSniffer or PHPMD are highlighted.">
+        <exec executable="${bin_dir}/phpcb${script-suffix}">
+            <arg line="--log ${build_dir}/logs" />
+            <arg line="--output ${build_dir}/code-browser" />
+            <arg line="--source ${source_dir}" />
+            <arg line="--source ${tests_dir}" />
+        </exec>
+    </target>
+
+    <target name="phpdcd" description="Dead Code Detector (DCD) for PHP code.">
+        <exec executable="${bin_dir}/phpdcd${script-suffix}" failonerror="true">
+            <arg value="-vvv" />
+            <arg value="--ansi" />
+            <arg value="--exclude='${bower_components_dir}'" />
+            <arg value="--recursive" />
+            <arg path="${source_dir}" />
+            <!--<arg path="${tests_dir}" />-->
+        </exec>
+    </target>
+
+    <target name="phpcpd" description="Copy/Paste Detector (CPD) for PHP code.">
+        <exec executable="${bin_dir}/phpcpd${script-suffix}" failonerror="true">
+            <arg value="-vvv" />
+            <arg value="--ansi" />
+            <arg value="--exclude='${bower_components_dir}'" />
+            <arg value="--fuzzy" />
+            <!--<arg value="&#45;&#45;progress" />-->
+            <arg path="${source_dir}" />
+            <!--<arg path="${tests_dir}" />-->
+        </exec>
+    </target>
+
+    <target name="static-analysis" depends="prepare-build" description="Run static code analysis.">
+        <antcall target="cs-fixer" />
+        <antcall target="phpcbf" />
+        <antcall target="phpcs" />
+        <antcall target="phpmd" />
+    </target>
+
+    <target name="unit-test" depends="apc-clear-cache,flush-redis-except-sessions" description="Run unit tests">
+        <exec executable="${phpunit_bin}" failonerror="true">
+            <arg line="--testsuite unit" />
+        </exec>
+    </target>
+
+    <target name="integration-test" depends="apc-clear-cache,flush-redis-except-sessions" description="Run integration tests">
+        <exec executable="${phpunit_bin}" failonerror="true">
+            <arg line="--testsuite integration --exclude-group overnight,excluded-group" />
+        </exec>
+    </target>
+
+    <target name="integration-test-group" depends="apc-clear-cache,flush-redis-except-sessions" description="Run group of integration tests">
+        <exec executable="${phpunit_bin}" failonerror="true">
+            <arg line="--group ${group}" />
+        </exec>
+    </target>
+
+    <!-- /DEVELOPER ENVIRONMENT BUILD -->
+
+    <!-- CACHE -->
+
+    <target name="apc-clear-cache" description="Clear cache from APC (console).">
+        <exec executable="${console_bin}">
+            <arg line="adserver:apc-cache-clear" />
+        </exec>
+    </target>
+
+    <target name="cache-clear" description="Clear cache">
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="cache:clear" />
+        </exec>
+    </target>
+
+    <target name="cache-clear-test" description="Clear cache with test environment">
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="${console_test_args}" />
+            <arg line="cache:clear" />
+        </exec>
+    </target>
+
+    <target name="cache-clear-prod" description="Clear cache with prod environment">
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="${console_prod_args}" />
+            <arg line="cache:clear" />
+        </exec>
+    </target>
+
+    <target name="doctrine-cache-clear" description="Clear docrtine cache">
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="doctrine:cache:clear-metadata" />
+        </exec>
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="doctrine:cache:clear-query" />
+        </exec>
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="doctrine:cache:clear-result" />
+        </exec>
+    </target>
+
+    <!-- /CACHE -->
+
+    <!-- ASSETS -->
+
+    <target name="setup-assets" description="Dump and install assets for development environment">
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="assets:install --symlink web" />
+        </exec>
+
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="assetic:dump" />
+        </exec>
+    </target>
+
+    <target name="setup-assets-prod" description="Dump and install assets for prod environment">
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="${console_prod_args}" />
+            <arg line="assets:install" />
+        </exec>
+
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="${console_prod_args}" />
+            <arg line="assetic:dump" />
+        </exec>
+    </target>
+
+    <target name="setup-assets-test" description="Dump and install assets for test environment">
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="${console_test_args}" />
+            <arg line="assets:install" />
+        </exec>
+
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="${console_test_args}" />
+            <arg line="assetic:dump" />
+        </exec>
+    </target>
+
+    <!-- /ASSETS -->
+
+    <!-- DATABASE -->
+
+    <target name="setup-database" description="Prepare database">
+
+        <antcall target="doctrine-cache-clear" />
+
+        <exec executable="${console_bin}">
+            <arg line="doctrine:database:drop --force" />
+        </exec>
+
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="doctrine:database:create" />
+        </exec>
+
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="doctrine:schema:create" />
+        </exec>
+
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="doctrine:fixtures:load --no-interaction" />
+        </exec>
+		
+        <exec executable="${console_bin}">
+            <arg line="doctrine:migrations:version --add --all" />
+        </exec>
+    </target>
+
+    <!-- /DATABASE -->
+
+    <!-- TEST DATABASE -->
+
+    <target name="drop-database-test" description="Drop test database">
+        <exec executable="${console_bin}">
+            <arg line="${console_test_args}" />
+            <arg line="doctrine:database:drop --force" />
+        </exec>
+    </target>
+
+    <target name="create-database-test" description="Create test database">
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="${console_test_args}" />
+            <arg line="doctrine:database:create" />
+        </exec>
+
+        <exec executable="${console_bin}" failonerror="true">
+            <arg line="${console_test_args}" />
+            <arg line="doctrine:schema:create" />
+        </exec>
+    </target>
+
+    <target name="setup-database-test" description="Prepare test database">
+        <antcall target="drop-database-test" />
+        <antcall target="create-database-test" />
+    </target>
+
+    <!-- /TEST DATABASE -->
+
+    <!-- HELPERS -->
+
+    <target name="flush-redis-except-sessions" description="Flush Redis DBs from 0 to 14">
+        <exec executable="${console_bin}">
+            <arg line="adserver:redis-flush-dbs --dbs=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14" />
+        </exec>
+    </target>
+
+    <target name="helper-clear-all-cache" description="Clear all caches in the application">
+        <delete includeemptydirs="true">
+            <fileset dir="${var_dir}/cache">
+                <include name="**/*"/>
+            </fileset>
+        </delete>
+        <!--<antcall target="cache-clear" />-->
+        <!--<antcall target="cache-clear-test" />-->
+        <!--<antcall target="cache-clear-prod" />-->
+        <antcall target="doctrine-cache-clear" />
+        <antcall target="flush-redis-except-sessions" />
+    </target>
+
+    <target name="helper-after-merge" description="Recommended actions after merge a branch">
+        <antcall target="composer-install" />
+        <antcall target="setup-database" />
+        <antcall target="setup-database-test" />
+        <antcall target="helper-clear-all-cache" />
+        <antcall target="setup-assets" />
+    </target>
+
+    <target name="helper-after-merge-save-db" description="Recommended actions after merge a branch">
+        <antcall target="composer-install" />
+        <antcall target="setup-database-test" />
+        <antcall target="helper-clear-all-cache" />
+        <antcall target="setup-assets" />
+    </target>
+
+    <target name="helper-before-push" description="Recommended actions before every push to a branch">
+        <antcall target="static-analysis" />
+        <antcall target="helper-clear-all-cache" />
+        <antcall target="unit-test" />
+        <antcall target="setup-assets-prod" />
+        <antcall target="setup-database-test" />
+        <antcall target="setup-assets-test" />
+        <antcall target="integration-test" />
+    </target>
+
+    <target name="helper-before-push-slim" description="Recommended actions before every push to a branch (slim version)">
+        <antcall target="static-analysis" />
+        <antcall target="helper-clear-all-cache" />
+        <antcall target="unit-test" />
+    </target>
+
+    <target name="helper-resetall-vagrant" description="Reset all application data on vagrant box env">
+        <!-- Delete local dirs -->
+        <delete includeemptydirs="true">
+            <fileset dir="${var_dir}/logs">
+                <include name="*"/>
+            </fileset>
+            <fileset dir="${var_dir}/cache">
+                <include name="**/*"/>
+            </fileset>
+        </delete>
+        <delete dir="${web_dir}/js" />
+        <delete dir="${web_dir}/css" />
+        <delete dir="${web_dir}/assetic" />
+        <!-- Delete symlinks and other dirs from the bundles dir, but not follow symlinks -->
+        <delete dir="${web_dir}/bundles" followSymlinks="false" removeNotFollowedSymlinks="true"  />
+        <!-- Delete cache file -->
+        <delete file="${var_dir}/bootstrap.php.cache" />
+        <!-- Delete logs -->
+        <delete file="${var_dir}/logs/*" />
+        <!-- Clear Redis data -->
+        <exec executable="/usr/bin/redis-cli" failonerror="true">
+            <arg line="flushall" />
+        </exec>
+        <!-- Clear NSQ data -->
+        <exec executable="/usr/bin/sudo" failonerror="true">
+            <arg line="/usr/bin/sh" />
+            <arg line="/vagrant/utils/nsq-reset-topics.sh" />
+        </exec>
+        <!-- Standard clean -->
+        <antcall target="helper-after-merge" />
+    </target>
+
+    <!-- /HELPERS -->
+
+</project>
