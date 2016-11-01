@@ -26,3 +26,6 @@
 
 ## File-based project format:
 *.iws
+
+### Skipper
+/*.skipper

@@ -7,7 +7,10 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * Publisher
  *
- * @ORM\Table(name="publisher")
+ * @ORM\Table(
+ *     name="publishers",
+ *     uniqueConstraints={@ORM\UniqueConstraint(name="idx_token_key", columns={"token_key"})}
+ * )
  * @ORM\Entity(repositoryClass="AppBundle\Repository\PublisherRepository")
  */
 class Publisher
@@ -15,7 +18,7 @@ class Publisher
     /**
      * @var int
      *
-     * @ORM\Column(name="id", type="integer")
+     * @ORM\Column(type="integer", name="id")
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="AUTO")
      */
@@ -24,21 +27,23 @@ class Publisher
     /**
      * @var string
      *
-     * @ORM\Column(name="name", type="string", length=255)
+     * @ORM\Column(type="string", length=255, nullable=true, name="name")
      */
     private $name;
 
     /**
+     * Revenue share in percents, range 0...1 where 1 is 100%.
+     * 
      * @var float
      *
-     * @ORM\Column(name="revenueShare", type="float")
+     * @ORM\Column(type="float", nullable=true, name="revenue_share")
      */
     private $revenueShare;
 
     /**
      * @var string
      *
-     * @ORM\Column(name="tokenKey", type="string", length=40)
+     * @ORM\Column(type="string", length=40, nullable=true, name="token_key")
      */
     private $tokenKey;
 
