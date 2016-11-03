@@ -29,10 +29,19 @@
         "sensio/framework-extra-bundle": "^3.0.2",
         "incenteev/composer-parameter-handler": "^2.0",
         "sensio/generator-bundle": "^3.0",
-        "maxmind/geoip": "^1.1"
+        "maxmind/geoip": "^1.1",
+        "doctrine/migrations": "^1.4",
+        "doctrine/doctrine-migrations-bundle": "^1.2"
     },
     "require-dev": {
-        "symfony/phpunit-bridge": "^3.0"
+        "symfony/phpunit-bridge": "^3.0",
+        "doctrine/doctrine-fixtures-bundle": "^2.3",
+        "squizlabs/php_codesniffer": "^2.7",
+        "fabpot/php-cs-fixer": "^1.12",
+        "phpmd/phpmd": "^2.4",
+        "mayflower/php-codebrowser": "^1.1",
+        "sebastian/phpdcd": "^1.0",
+        "sebastian/phpcpd": "^2.0"
     },
     "scripts": {
         "symfony-scripts": [

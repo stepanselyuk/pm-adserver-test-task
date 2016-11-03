@@ -1,7 +1,6 @@
 ### Symfony template
 
 /app/config/parameters.yml
-/build/
 /phpunit.xml
 /var/*
 !/var/cache
@@ -16,6 +15,12 @@
 !var/SymfonyRequirements.php
 /vendor/
 /web/bundles/
+
+/build/*
+!build/.php_cs
+!build/checkstyle.xsl
+!build/phpcs.xml
+!build/phpmd.xml
 
 /bin/*
 !bin/console
