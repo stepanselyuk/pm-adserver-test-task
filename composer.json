@@ -21,7 +21,7 @@
         "symfony/symfony": "3.1.*",
         "doctrine/orm": "^2.5",
         "doctrine/doctrine-bundle": "^1.6",
-        "doctrine/doctrine-cache-bundle": "^1.2",
+        "doctrine/doctrine-cache-bundle": "dev-master",
         "symfony/swiftmailer-bundle": "^2.3",
         "symfony/monolog-bundle": "^2.8",
         "symfony/polyfill-apcu": "^1.0",
@@ -31,18 +31,44 @@
         "sensio/generator-bundle": "^3.0",
         "maxmind/geoip": "^1.1",
         "doctrine/migrations": "^1.4",
-        "doctrine/doctrine-migrations-bundle": "^1.2"
+        "doctrine/doctrine-migrations-bundle": "^1.2",
+        "symfony/assetic-bundle": "^2.8",
+        "twig/extensions": "^1.4",
+        "sentry/sentry": "^1.5",
+        "nesbot/carbon": "^1.21",
+        "guzzlehttp/guzzle": "^6.2",
+        "mathiasverraes/classfunctions": "^1.1",
+        "friendsofsymfony/user-bundle": "2.0.*@dev",
+        "jms/security-extra-bundle": "^1.6",
+        "jms/serializer-bundle": "^1.1",
+        "friendsofsymfony/rest-bundle": "^2.1",
+        "knplabs/knp-time-bundle": "^1.7",
+        "league/uri": "^4.2",
+        "piwik/device-detector": "^3.7",
+        "vipx/bot-detect-bundle": "^3.0",
+        "friendsofsymfony/jsrouting-bundle": "^1.6",
+        "socloz/nsq-bundle": "dev-stepanselyuk as dev-master",
+        "socloz/nsqphp": "dev-stepanselyuk as dev-socloz"
     },
     "require-dev": {
         "symfony/phpunit-bridge": "^3.0",
         "doctrine/doctrine-fixtures-bundle": "^2.3",
         "squizlabs/php_codesniffer": "^2.7",
-        "fabpot/php-cs-fixer": "^1.12",
         "phpmd/phpmd": "^2.4",
         "mayflower/php-codebrowser": "^1.1",
-        "sebastian/phpdcd": "^1.0",
-        "sebastian/phpcpd": "^2.0"
+        "sebastian/phpcpd": "^2.0",
+        "friendsofphp/php-cs-fixer": "^1.12"
     },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/stepanselyuk/nsqphp"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/stepanselyuk/NsqBundle"
+        }
+    ],
     "scripts": {
         "symfony-scripts": [
             "Incenteev\\ParameterHandler\\ScriptHandler::buildParameters",

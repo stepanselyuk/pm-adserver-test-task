@@ -7,3 +7,11 @@ services:
 #    service_name:
 #        class: AppBundle\Directory\ClassName
 #        arguments: ["@another_service_name", "plain_value", "%parameter_name%"]
+
+    session_handler_redis:
+        class: AppBundle\Service\NativeRedisSessionHandler
+        arguments:    ["%session_handler_redis_save_path%"]
+
+    validator.mapping.cache.redis: # Validator cache service
+        class: Symfony\Component\Validator\Mapping\Cache\DoctrineCache
+        arguments: ["@cache_provider_validation"]

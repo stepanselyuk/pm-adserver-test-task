@@ -6,18 +6,18 @@ imports:
 # Put parameters here that don't need to change on each machine where the app is deployed
 # http://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
 parameters:
-    locale: en
+#    locale: en
 
 framework:
     #esi:             ~
-    #translator:      { fallbacks: ["%locale%"] }
+    translator:      { fallbacks: ["%locale%"] }
     secret:          "%secret%"
     router:
         resource: "%kernel.root_dir%/config/routing.yml"
         strict_requirements: ~
     form:            ~
     csrf_protection: ~
-    validation:      { enable_annotations: true }
+    validation:      { enable_annotations: true, cache: validator.mapping.cache.redis }
     #serializer:      { enable_annotations: true }
     templating:
         engines: ['twig']
@@ -26,8 +26,10 @@ framework:
     trusted_proxies: ~
     session:
         # http://symfony.com/doc/current/reference/configuration/framework.html#handler-id
-        handler_id:  session.handler.native_file
-        save_path:   "%kernel.root_dir%/../var/sessions/%kernel.environment%"
+        # handler_id:  session.handler.native_file
+        # save_path:   "%kernel.root_dir%/../var/sessions/%kernel.environment%"
+        handler_id: session_handler_redis
+        gc_maxlifetime: 1440
     fragments:       ~
     http_method_override: true
     assets: ~
@@ -37,17 +39,37 @@ twig:
     debug:            "%kernel.debug%"
     strict_variables: "%kernel.debug%"
 
+# Assetic Configuration
+assetic:
+    debug:          "%kernel.debug%"
+    use_controller: false
+    node: "%assetic.node.bin%"
+    ruby: "%assetic.ruby.bin%"
+    java: "%assetic.java.bin%"
+    sass: "%assetic.sass.bin%"
+    filters:
+        cssrewrite: ~
+        compass:
+            bin:              "%compass_bin%"
+            no_line_comments: true
+            style:            compressed
+        less: ~
+        autoprefixer:
+            browsers: ['last 3 versions']
+
 # Doctrine Configuration
 doctrine:
     dbal:
-        driver:   pdo_mysql
+        driver:   "%database_driver%"
         host:     "%database_host%"
         port:     "%database_port%"
         dbname:   "%database_name%"
         user:     "%database_user%"
         password: "%database_password%"
-        charset:  UTF8
+        server_version: "%database_server_version%"
         unix_socket: "%database_unix_socket%"
+        charset:  UTF8
+
         # if using pdo_sqlite as your database driver:
         #   1. add the path in parameters.yml
         #     e.g. database_path: "%kernel.root_dir%/data/data.db3"
@@ -55,15 +77,170 @@ doctrine:
         #   3. Uncomment next line:
         #     path:     "%database_path%"
 
+        types:
+            json_object: Common\Infrastructure\Doctrine\Types\JsonObjectType
+
     orm:
+        auto_mapping: false
         auto_generate_proxy_classes: "%kernel.debug%"
         naming_strategy: doctrine.orm.naming_strategy.underscore
-        auto_mapping: true
+        metadata_cache_driver:
+            type: redis
+            host: "%redis_host%"
+            port: "%redis_port%"
+            cache_provider: redis_cache_doctrine
+        result_cache_driver:
+            type: redis
+            host: "%redis_host%"
+            port: "%redis_port%"
+            cache_provider: redis_cache_doctrine
+        query_cache_driver:
+            type: redis
+            host: "%redis_host%"
+            port: "%redis_port%"
+            cache_provider: redis_cache_doctrine
+        dql:
+            string_functions:
+                SUBSTRING_INDEX: Common\Infrastructure\Doctrine\DQL\SubstringIndexFunction
+                REPLACE: Common\Infrastructure\Doctrine\DQL\ReplaceFunction
+                REGEXP: Common\Infrastructure\Doctrine\DQL\RegexpFunction
+                GROUP_CONCAT: Common\Infrastructure\Doctrine\DQL\GroupConcatFunction
+        mappings:
+            AppBundle: ~
+            UserBundle: ~
+            common:
+                type: annotation
+                dir: "%kernel.root_dir%/../src/Common/Model"
+                prefix: Common\Model
+
+doctrine_cache:
+    aliases:
+        cache_provider_doctrine: redis_cache_doctrine
+        cache_provider_default: redis_cache_default
+        cache_provider_validation: redis_cache_validation
+        cache_provider_geo: redis_cache_geo
+        cache_provider_devices: redis_cache_devices
+    providers:
+        redis_cache_doctrine:
+            redis:
+                host: "%redis_host%"
+                port: "%redis_port%"
+                database: 1
+                persistent: true
+                timeout: 3.01
+        redis_cache_default:
+            redis:
+                host: "%redis_host%"
+                port: "%redis_port%"
+                database: 2
+                persistent: true
+                timeout: 3.02
+        redis_cache_validation:
+            redis:
+                host: "%redis_host%"
+                port: "%redis_port%"
+                database: 3
+                persistent: true
+                timeout: 3.03
+        redis_cache_geo:
+            redis:
+                host: "%redis_host%"
+                port: "%redis_port%"
+                database: 4
+                persistent: true
+                timeout: 3.04
+        redis_cache_devices:
+            redis:
+                host: "%redis_host%"
+                port: "%redis_port%"
+                database: 5
+                persistent: true
+                timeout: 3.05
 
 # Swiftmailer Configuration
 swiftmailer:
-    transport: "%mailer_transport%"
-    host:      "%mailer_host%"
-    username:  "%mailer_user%"
-    password:  "%mailer_password%"
-    spool:     { type: memory }
+    transport:  "%mailer_transport%"
+    host:       "%mailer_host%"
+    port:       "%mailer_port%"
+    username:   "%mailer_user%"
+    password:   "%mailer_password%"
+    encryption: "%mailer_encryption%"
+    spool:      "%mailer_spool%"
+    auth_mode:  "%mailer_auth_mode%"
+
+sensio_framework_extra:
+   view:
+       annotations: true
+
+fos_rest:
+    view:
+        view_response_listener: force
+        formats:
+            json: true
+            html: false
+    routing_loader:
+        default_format: json
+    param_fetcher_listener: true
+    body_listener:
+        array_normalizer: fos_rest.normalizer.camel_keys
+
+fos_user:
+    db_driver: orm
+    firewall_name: main
+    user_class: UserBundle\Entity\User
+    registration:
+        confirmation:
+            from_email:
+                address: support@adserver.dev
+                sender_name: AdServer
+            enabled: true
+            template: FOSUserBundle:Registration:email.html.twig
+        form:
+            type: adserver_user_registration
+            validation_groups:  []
+
+    resetting:
+        token_ttl: 86400
+        email:
+            from_email:
+                address: support@adserver.dev
+                sender_name: AdServer
+            template: FOSUserBundle:Resetting:email.html.twig
+        form:
+            type: adserver_password_ressetting
+            name: fos_user_resetting_form
+            validation_groups: []
+
+    profile:
+        form:
+            type:               adserver_user_profile
+            name:               fos_user_profile_form
+            validation_groups:  []
+    change_password:
+        form:
+            type:               adserver_user_change_password
+            name:               fos_user_change_password
+            validation_groups:  []
+    service:
+        mailer: fos_user.mailer.twig_swift
+
+jms_security_extra: ~
+
+monolog:
+    channels: ["default_api"]
+
+vipx_bot_detect:
+    metadata_file: "@AppBundle/Resources/config/bot_list.yml"
+    cache_file: "vipx_bot_detector/cache.php"
+
+socloz_nsq:
+
+    lookupd_hosts: "%nsqlookupd_hosts%" # list of nsqlookupd hosts, optional. If omitted the consumers
+                                        # will use the "publish_to" list (see below) of the topic.
+    topics:
+        impressions:                      # topic name
+            publish_to: "%nsqd_hosts%"    # list of nsqd hosts to publish to
+            requeue_strategy:             # requeuing strategy on failure
+                max_attempts: 3           # maximum number of attempts per message
+                delays: [50]              # requeuing delays in ms
+

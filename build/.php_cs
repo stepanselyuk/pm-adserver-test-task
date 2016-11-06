@@ -87,7 +87,7 @@ $fixers = [
     // Remove duplicated semicolons.
     'duplicate_semicolon',
     // A return statement wishing to return nothing should be simply "return".
-    'empty_return',
+    //'empty_return',
     // Removes extra empty lines.
     'extra_empty_lines',
     // Add missing space between function's argument and its typehint.

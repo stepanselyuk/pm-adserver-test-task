@@ -3,10 +3,16 @@ imports:
 
 framework:
     test: ~
+    trusted_proxies: [127.0.0.1]
     session:
+        # defaults for test env
         storage_id: session.storage.mock_file
+        handler_id: session.handler.native_file
     profiler:
         collect: false
+    validation:
+        # default apc for test env
+        cache: validator.mapping.cache.apc
 
 web_profiler:
     toolbar: false
@@ -14,3 +20,58 @@ web_profiler:
 
 swiftmailer:
     disable_delivery: true
+
+doctrine:
+    dbal:
+        driver:   "%test_database_driver%"
+        host:     "%test_database_host%"
+        port:     "%test_database_port%"
+        dbname:   "%test_database_name%"
+        user:     "%test_database_user%"
+        password: "%test_database_password%"
+        server_version: "%test_database_server_version%"
+        unix_socket: "%test_database_unix_socket%"
+        charset:  UTF8
+    orm:
+        # default apc for test env
+        metadata_cache_driver:
+            type: apc
+            cache_provider: apc_cache_doctrine
+        result_cache_driver:
+            type: apc
+            cache_provider: apc_cache_doctrine
+        query_cache_driver:
+            type: apc
+            cache_provider: apc_cache_doctrine
+
+doctrine_cache:
+    aliases:
+        cache_provider_doctrine: apc_cache_doctrine
+        cache_provider_default: apc_cache_default
+        cache_provider_validation: apc_cache_validation
+        cache_provider_geo: apc_cache_geo
+        cache_provider_devices: apc_cache_devices
+    providers:
+        apc_cache_doctrine:
+            namespace: cache_doctrine_ns
+            apc: ~
+        apc_cache_default:
+            namespace: cache_default_ns
+            apc: ~
+        apc_cache_validation:
+            namespace: cache_validation_ns
+            apc: ~
+        apc_cache_geo:
+            namespace: cache_geo_ns
+            apc: ~
+        apc_cache_devices:
+            namespace: cache_devices_ns
+            apc: ~
+
+security:
+    firewalls:
+        main:
+            http_basic: ~
+
+socloz_nsq:
+    stub: true

@@ -1,0 +1,8 @@
+imports:
+     - { resource: '../../../../../vendor/vipx/bot-detect/Vipx/BotDetect/Resources/metadata/extended.yml' }
+
+bots:
+    amazon_client:
+        agent: Google-HTTP-Java-Client
+        ip: null
+        type: bot

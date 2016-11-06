@@ -1,0 +1,9 @@
+services:
+#    user.example:
+#        class: AppBundle\Example
+#        arguments: ["@service_id", "plain_value", "%parameter%"]
+
+    app.transaction_manager:
+            class: Common\Infrastructure\Doctrine\DoctrineTransactionManager
+            arguments:
+                - "@doctrine.orm.default_entity_manager"
